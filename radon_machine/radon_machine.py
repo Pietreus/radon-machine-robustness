@@ -57,7 +57,7 @@ def initializer():
 
 
 class RadonMachine(BaseSGD):
-    def __init__(self, base_learner: BaseSGDClassifier, k: int, min_samples: int, maximum_height: int = 100,
+    def __init__(self, base_learner: BaseSGDClassifier, k: int, min_samples: int = 100, maximum_height: int = 100,
                  n_jobs=2, pre_trained=None, sigma=1e-5):
         """
 
@@ -146,3 +146,4 @@ class RadonMachine(BaseSGD):
     def set_random_state(self, random_state):
         random.seed(random_state)
         self.random_state = random_state
+
