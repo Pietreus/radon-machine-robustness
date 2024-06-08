@@ -105,7 +105,7 @@ radon_machine_outlier_expectation(5, 3, 20)
 
 h <- 4
 d <- 3
-runs <- 20000
+runs <- 200
 x <- c()
 y <- c()
 for(o in 0:(d^h)){
@@ -117,6 +117,7 @@ for(o in 0:(d^h)){
        }
 }
 plot(x,y)
+abline(0,1)
 # plot(x-y)
 
 

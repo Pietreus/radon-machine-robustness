@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+source("radon_robustness_simulation.R")
+
+#' upper bounds the probability of the radon machine breaking down with markov bounds
+radon_machine_breakdown_probability <- function(radon_number, height, num_outliers){
+  sapply(num_outliers, function(x)min(radon_machine_outlier_expectation(radon_number, height, x)/2, 1))
+}
+
+#' returns the maximum amount of tolerated outliers such that the breakdown
+#' probability is smaller p
+radon_robustness<- function(radon_number, height, p=0.05){
+  num_outliers <- 0
+  increment <- radon_number^height/2
+  while(increment > 0){
+    if(radon_machine_breakdown_probability(radon_number, height, num_outliers+increment) < p){
+      num_outliers <- num_outliers + increment
+    }
+    increment <- floor(increment/2)
+  }
+  # while(radon_machine_breakdown_probability(radon_number, height, num_outliers)<p)
+
+
+    num_outliers <- num_outliers+1
+  return(num_outliers)
+}
+
+
+
+```
+
+Type any R code in the chunk, for example:
+```{r robustness_table}
+
+# makes tables for dimensions 5-25 in steps of 5
+
+five_percent_breakdown_tolerance <- t(sapply(1:5,
+                                             function(h)sapply(
+                                               (1:5)*5, function(d)radon_robustness(d+2,h))))
+
+five_permille_breakdown_tolerance <- t(sapply(1:5,
+                                             function(h)sapply(
+                                               (1:5)*5, function(d)radon_robustness(d+2,h,p=0.005))))
+
+
+base_hypothesis_count <- t(sapply(1:5, function(h)sapply((1:5)*5, function(d)(d+2)^h)))
+rel <- five_percent_breakdown_tolerance/base_hypothesis_count
+
+
+# TODO: change this
+print_dat <- cbind(paste0(2^(1:5)),matrix(paste0(five_percent_breakdown_tolerance, " (", round(rel*100, digits = 2), "%)"), ncol = 5))
+print_dat
+
+
+
+
+
+data_df <- as.data.frame(print_dat)
+colnames(data_df) <- c("$\eps$",(1:5)*5)
+rownames(data_df) <- 1:5
+
+
+data_df
+```
+
+```{r inverted table}
+
+prob_two_or_more_frak_log <- function(n, num_outliers, radon_number){
+  1- min(dhyper_frak_log(0, n, num_outliers, radon_number) + dhyper_frak_log(1, n, num_outliers, radon_number), 1)
+}
+
+
+
+
+#'upper bounds the probability of the radon machine being stable with markov bounds
+radon_machine_stability_probability <- function(radon_number, height, num_outliers){
+  min((radon_number - radon_machine_outlier_expectation(radon_number, height, num_outliers))/(radon_number-2),0)
+}
+
+#' returns the maximum amount of tolerated outliers such that the breakdown
+#' probability is smaller p
+radon_actual_robustness<- function(radon_number, height, p=0.05){
+  num_outliers <- 0
+  increment <- radon_number^height/2
+  while(increment > 0){
+    if(radon_machine_stability_probability(radon_number, height, num_outliers+increment) < p){
+      num_outliers <- num_outliers + increment
+    }
+    increment <- floor(increment/2)
+  }
+  # while(radon_machine_breakdown_probability(radon_number, height, num_outliers)<p)
+
+
+  num_outliers <- num_outliers+1
+  return(num_outliers)
+}
+
+
+
+fifty_percent_stability_tolerance <- t(sapply(1:5,
+                                             function(h)sapply(
+                                               (1:5)*5, function(d)radon_actual_robustness(d+2,h,p=0.5))))
+
+
+
+```
+
+
+
+```{r produce_table}
+
+five_percent_breakdown_tolerance
+base_hypothesis_count
+#tbd
+
+library(kableExtra)
+library(dplyr)
+rows<- row.names(data_df)
+
+data_df %>%
+    kbl(align = "r", , booktabs = TRUE, row.names = TRUE, format="latex") %>%
+    column_spec(2, border_right = TRUE) %>%
+    add_header_above(c("","", "d" = 5)) %>%
+    kable_styling(latex_options = "striped")
+
+
+
+
+
+```
