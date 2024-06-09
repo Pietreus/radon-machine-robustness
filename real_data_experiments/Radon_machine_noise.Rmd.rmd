@@ -1,0 +1,52 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+The [R plugin](https://www.jetbrains.com/help/pycharm/r-plugin-support.html) for IntelliJ-based IDEs provides
+handy capabilities to work with the [R Markdown](https://www.jetbrains.com/help/pycharm/r-markdown.html) files.
+To [add](https://www.jetbrains.com/help/pycharm/r-markdown.html#add-code-chunk) a new R chunk,
+position the caret at any line or the code chunk, then click "+".
+
+The code chunk appears:
+```{r}
+
+
+
+```
+
+Type any R code in the chunk, for example:
+```{r}
+
+library(tidyverse)
+
+data <- read.csv("results/susy_svm_outliers_robustness_noise.csv")
+
+summary_data <- data %>%
+  group_by(outliers,sigma) %>%
+  summarise(
+    mean_y = mean(auc),
+    ci_low = pmax(mean(auc) - qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), min(auc)),
+    ci_high = pmin(mean(auc) + qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), max(auc))
+  )
+
+
+library(ggplot2)
+
+ggplot(data) +
+        geom_smooth(aes(x=outliers, y=auc, color=as.factor(sigma)))
+
+ggplot(summary_data, aes(x = outliers, y = mean_y)) +
+  geom_line(aes(color = as.factor(sigma))) +
+  geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=as.factor(sigma)), alpha = 0.2) +
+  # geom_point(data = data, aes(x = x, y = y), alpha = 0.1) + # optional: to show original data points
+  labs(title = "Linear SVM Radon machine SUSY Dataset height=3",
+       x = "Number of outliers",
+       y = "ROC-AUC-score") +
+  theme_minimal()
+
+
+```
+
+Now, click the **Run** button on the chunk toolbar to [execute](https://www.jetbrains.com/help/pycharm/r-markdown.html#run-r-code) the chunk code. The result should be placed under the chunk.
+Click the **Knit and Open Document** to build and preview an output.

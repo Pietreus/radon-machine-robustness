@@ -6,7 +6,7 @@ import signal
 import numpy as np
 from joblib import Parallel, delayed
 from sklearn.datasets import make_classification
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.svm import LinearSVC
 
 from radon_machine.radon_point.iterated_radon_point import iterated_radon_point
@@ -78,6 +78,20 @@ class RadonMachineSVM(LinearSVC):
         estimator.classes_ = [0, 1]
         return estimator
 
+    def set_estimators(self, estimators, shuffle=True):
+        self.estimators = estimators.copy()
+        self.aggregate_estimators(shuffle=shuffle)
+
+    def get_estimators(self) -> np.matrix:
+        return self.estimators
+
+    def aggregate_estimators(self, shuffle=True):
+        # aggregate
+        if shuffle:
+            np.random.shuffle(self.estimators)
+        estimator = iterated_radon_point(self.estimators, self._radon_number, self.height, self.sigma)
+        self._fit_estimator = self.parse_params(estimator)
+
     def fit(self, X, y, sample_weight=None):
         """
 
@@ -103,16 +117,21 @@ class RadonMachineSVM(LinearSVC):
 
         # train base estimators
         # stratified split to ensure each svm learns a reasonable function
-        skf = StratifiedKFold(folds, shuffle=True, random_state=self.random_state)
+        skf = KFold(folds, shuffle=True, random_state=self.random_state)
+        vector = np.arange(len(X))
+        np.random.shuffle(vector)
+        fold_sizes = np.full(folds, len(X) // folds)
+        fold_sizes[:len(X) % folds] += 1
+        split_indices = np.cumsum(fold_sizes)[:-1]
+        idx = np.split(vector, split_indices)
+        # skf = StratifiedKFold(folds, shuffle=True, random_state=self.random_state)
         with Parallel(self.n_jobs) as parallel:
             x = parallel(delayed(self._train_single_linear_SVC)(
-                data) for data in itertools.product([(X[test], y[test]) for _, test in skf.split(X, y)]))
+                data) for data in itertools.product([(X[split], y[split]) for split in idx]))
         estimators = np.array(x)
-
-        # aggregate
-        np.random.shuffle(estimators)
-        estimator = iterated_radon_point(estimators, self._radon_number, self.height, self.sigma)
-        self._fit_estimator = self.parse_params(estimator)
+        self.estimators = estimators
+        self.aggregate_estimators()
+        return self
 
     def predict(self, X):
         # here just use the only estimator that is left from the radon fitting process
@@ -126,9 +145,13 @@ class RadonMachineSVM(LinearSVC):
         random.seed(random_state)
         self.random_state = random_state
 
+    def decision_function(self, X):
+        return self._fit_estimator.decision_function(X)
+
+
 if __name__ == "__main__":
     X, y = make_classification(n_features=4, random_state=0)
     classifier = RadonMachineSVM()
-    classifier.fit(X,y)
+    classifier.fit(X, y)
     classifier.predict(X)
     pass
