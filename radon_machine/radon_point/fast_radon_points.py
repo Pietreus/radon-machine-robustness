@@ -23,24 +23,30 @@ def radon_point3(pts):
 
     for i in range(len(null)):  # TODO: works for k =3 only!
 
-        lambda_i = null[i][::-1] #find a linear combination for c1*v1+c2*v2=0 -> c1=v2, c2 =v1
+        lambda_i = null[i][::-1]  #find a linear combination for c1*v1+c2*v2=0 -> c1=v2, c2 =v1
         assert len(lambda_i.T) == 2
         reduced_null = null.T[0] * lambda_i[0] - null.T[1] * lambda_i[1]
         #lambdas is from the the REVERSED null, therefore the indices are the way they are
         assert reduced_null[i] == 0
         null_plus = (reduced_null).clip(min=0)
         null_minus = (reduced_null).clip(max=0)
-        r = system.dot(null_plus) / (null_plus.sum())   # get radon point like described by radon
-        r_minus = system.dot(null_minus) / (null_minus.sum())   # get radon point like described by radon
+        r = system.dot(null_plus) / (null_plus.sum())  # get radon point like described by radon
+        r_minus = system.dot(null_minus) / (null_minus.sum())  # get radon point like described by radon
 
-        assert np.linalg.norm(r-r_minus) < 1e-5
+        assert np.linalg.norm(r - r_minus) < 1e-5
         r_pts[i] = r[:-1].T
     return r_pts
 
-def null_space(system):
+
+def null_space(system: np.ndarray):
+    """
+    returns a basis of the null-space of the given system as well as the condition number to detect near deficient cases
+    :param system: array of shape (n+2) x (n+1)
+    :return: set of basis-vectors for the null-space as well as the condition number of the system
+    """
     U, s, Vt = np.linalg.svd(system)
-    non_null_columns = sum(s >= 1e-10)
-    return Vt[non_null_columns:].T
+    non_null_columns = sum(s > 0)
+    return Vt[non_null_columns:].T, max(s) / (min(s) + 1e-10)
 
 
 def radon_point_unique(pts):
@@ -48,20 +54,19 @@ def radon_point_unique(pts):
 
     :type pts: array of shape (d+2,d) of points in general position
     """
-    system = np.vstack((pts.transpose(), np.ones((1, len(pts)))))
+    system = np.vstack((pts.transpose(), np.ones((1, len(pts))))).astype(np.double)
     # null = scipy.linalg.null_space(system)
-    null = null_space(system)
+    null, cond_number = null_space(system)
     null_plus = null.clip(min=0)
     null_minus = null.clip(max=0)
     assert len(null_plus.T) == 1
     # print(null_plus)
     r = system.dot(null_plus) / null_plus.sum()  # get radon point like described by radon
     r_minus = system.dot(null_minus) / null_minus.sum()
-    if np.linalg.norm(r-r_minus) > 1e-5:
-        print(f"{r}, {r_minus}, {r-r_minus}, {np.linalg.norm(r-r_minus)} ")
+    if np.linalg.norm(r - r_minus) > 1e-10:
+        print(f"{r}, {r_minus}, {r - r_minus}, {np.linalg.norm(r - r_minus)} ")
         assert False
-    return r[:-1].T  # drop 1 component
-
+    return r[:-1].T.astype(np.double), cond_number  # drop 1 component
 
 
 if __name__ == '__main__':
@@ -86,20 +91,15 @@ if __name__ == '__main__':
 
         return points
 
+
     d = 22
-    n = d+2
+    n = d + 2
     for _ in range(10000):
-        simplex = regular_simplex(d+1)
+        simplex = regular_simplex(d + 1)
         pt1 = np.mean(simplex, axis=0)
         pts = np.vstack((pt1, simplex))
         # print(f"mean of simplex = {pt1}\n radon point = {radon_point_unique(pts)}\n diff = {np.linalg.norm(radon_point_unique(pts) - pt1)}")
         assert np.linalg.norm(radon_point_unique(pts) - pt1) < 1e-12
-
-
-
-
-
-
 
     d = 22  # dims
     n = d + 3  # amount of hypotheses
@@ -112,7 +112,8 @@ if __name__ == '__main__':
 
     faston_points = radon_point3(pts)
     faston_points2 = radon_point3(faston_points)
-    print(f"mean of radon   points: {faston_points.mean(axis=0)}\nmean of radon^2 points: {faston_points2.mean(axis=0)}")
+    print(
+        f"mean of radon   points: {faston_points.mean(axis=0)}\nmean of radon^2 points: {faston_points2.mean(axis=0)}")
     orig_mean = pts.mean(axis=0)
     # lim = 10
     # for i in range(lim):
@@ -130,4 +131,3 @@ if __name__ == '__main__':
     # print(is_in_check)
     # print(ConvexHull(hull).points)
     # exit()
-
