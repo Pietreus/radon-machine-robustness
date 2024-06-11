@@ -9,9 +9,65 @@ To [add](https://www.jetbrains.com/help/pycharm/r-markdown.html#add-code-chunk) 
 position the caret at any line or the code chunk, then click "+".
 
 The code chunk appears:
-```{r}
+```{r aggregate_csvs}
 
+library(dplyr)
+library(readr)
 
+merge_csv_fragments_by_name_base_r <- function(folder_A, folder_B) {
+  # Get list of CSV fragment files in the source folder
+  csv_files <- list.files(folder_A, pattern = "\\.csv\\.\\d+$", full.names = TRUE)
+
+  # Extract base names and group files
+  base_names <- gsub("\\.csv\\.\\d+$", "", basename(csv_files))
+  file_groups <- split(csv_files, base_names)
+
+  # Process each group
+  for (base_name in names(file_groups)) {
+    # Get the files for the current group and sort them by fragment number
+    group_files <- file_groups[[base_name]]
+    group_files <- group_files[order(as.numeric(gsub(".*\\.csv\\.(\\d+)$", "\\1", group_files)))]
+
+    # Create an empty character vector to store the combined content
+    combined_content <- character()
+
+    # Read and concatenate all CSV fragments in the group
+    for (file in group_files) {
+      file_content <- readLines(file)
+      combined_content <- c(combined_content, file_content)
+    }
+
+    # Remove duplicate header lines if present
+    header <- combined_content[1]
+    combined_content <- c(header, combined_content[-1][!duplicated(combined_content[-1])])
+
+    # Define the output file path
+    output_file_name <- paste0(base_name, ".csv")
+    output_file_path <- file.path(folder_B, output_file_name)
+
+    # Write the combined content to a CSV file in the destination folder
+    writeLines(combined_content, output_file_path)
+
+    message("CSV fragments for '", base_name, "' merged and saved to ", output_file_path)
+  }
+}
+
+merge_csv_fragments("results","results_aggregated")
+
+euclidean_distance <- function(vec1, vec2) {
+  # Check if both vectors have the same length
+  if (length(vec1) != length(vec2)) {
+    stop("Vectors must have the same length.")
+  }
+
+  # Calculate the sum of squared differences
+  sum_sq_diff <- sum((vec1 - vec2)^2)
+
+  # Take the square root of the sum of squared differences
+  dist <- sqrt(sum_sq_diff)
+
+  return(dist)
+}
 
 ```
 
@@ -20,7 +76,16 @@ Type any R code in the chunk, for example:
 
 library(tidyverse)
 
-data <- read.csv("results/susy_svm_outliers_robustness_noise.csv")
+data <- read.csv("real_data_experiments/results_aggregated/hypothesis_flipping_under_noise_2024-06-10_14:27:38.csv")
+
+params <- data$params
+
+# Remove square brackets and split the string by whitespace
+numeric_params <- (strsplit(gsub("\\[ ?|\\]", "", params), "\\s+"))
+final_estimators <- do.call(rbind, lapply(numeric_params, as.numeric))
+
+data
+
 
 summary_data <- data %>%
   group_by(outliers,sigma) %>%
