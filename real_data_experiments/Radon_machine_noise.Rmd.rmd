@@ -14,7 +14,7 @@ The code chunk appears:
 library(dplyr)
 library(readr)
 
-merge_csv_fragments_by_name_base_r <- function(folder_A, folder_B) {
+merge_csv_fragments <- function(folder_A, folder_B) {
   # Get list of CSV fragment files in the source folder
   csv_files <- list.files(folder_A, pattern = "\\.csv\\.\\d+$", full.names = TRUE)
 
@@ -52,7 +52,7 @@ merge_csv_fragments_by_name_base_r <- function(folder_A, folder_B) {
   }
 }
 
-merge_csv_fragments("results","results_aggregated")
+merge_csv_fragments("real_data_experiments/results_new","real_data_experiments/results_aggregated")
 
 euclidean_distance <- function(vec1, vec2) {
   # Check if both vectors have the same length
@@ -76,42 +76,190 @@ Type any R code in the chunk, for example:
 
 library(tidyverse)
 
-data <- read.csv("real_data_experiments/results_aggregated/hypothesis_flipping_under_noise_2024-06-10_14:27:38.csv")
-
-params <- data$params
-
-# Remove square brackets and split the string by whitespace
-numeric_params <- (strsplit(gsub("\\[ ?|\\]", "", params), "\\s+"))
-final_estimators <- do.call(rbind, lapply(numeric_params, as.numeric))
-
-data
-
-
-summary_data <- data %>%
-  group_by(outliers,sigma) %>%
-  summarise(
-    mean_y = mean(auc),
-    ci_low = pmax(mean(auc) - qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), min(auc)),
-    ci_high = pmin(mean(auc) + qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), max(auc))
-  )
-
-
+files <- list.files("results_aggregated", pattern = "\\.csv", full.names = TRUE)
 library(ggplot2)
+print(files)
+for (file in files){
+  print(file)
+  data <- read.csv(file)
+  params <- data$params
 
-ggplot(data) +
-        geom_smooth(aes(x=outliers, y=auc, color=as.factor(sigma)))
+  # Remove square brackets and split the string by whitespace
+  numeric_params <- (strsplit(gsub("\\[ ?|\\]", "", params), "\\s+"))
+  final_estimators <- do.call(rbind, lapply(numeric_params, as.numeric))
 
-ggplot(summary_data, aes(x = outliers, y = mean_y)) +
-  geom_line(aes(color = as.factor(sigma))) +
-  geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=as.factor(sigma)), alpha = 0.2) +
-  # geom_point(data = data, aes(x = x, y = y), alpha = 0.1) + # optional: to show original data points
-  labs(title = "Linear SVM Radon machine SUSY Dataset height=3",
-       x = "Number of outliers",
-       y = "ROC-AUC-score") +
-  theme_minimal()
+  data$params <- final_estimators
 
+
+  summary_data <- data %>%
+          group_by(outliers,sigma) %>%
+          reframe(
+                  mean_y = mean(auc),
+                  ci_low = pmin(mean(auc) - qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), min(auc)),
+                  ci_high = pmax(mean(auc) + qt(0.975, df=n()-1) * sd(auc) / sqrt(n()), max(auc))
+          )
+
+
+  (ggplot(summary_data %>% filter(sigma %in% c(0,1e-10,1e-5,0.001,0.1,0.5,1,2)), aes(x = outliers, y = mean_y)) +
+          geom_line(aes(color = as.factor(sigma))) +
+          geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=as.factor(sigma)), alpha = 0.2) +
+          geom_vline(xintercept = 52, linetype="dashed") +
+          # geom_point(data = data, aes(x = x, y = y), alpha = 0.1) + # optional: to show original data points
+          labs(title = "Linear SVM Radon machine SUSY Dataset height=3",
+               subtitle = file,
+               x = "Number of outliers",
+               y = "ROC-AUC-score") +
+          theme_minimal()) %>% plot()
+
+
+
+  (ggplot(data %>% filter(outliers == 0),
+         aes(x = as.factor(sigma), y= auc, fill=as.factor(sigma))) +
+          geom_boxplot() +
+          labs(subtitle = file)) %>% plot()
+
+
+  unperturbed_radon_point <- apply(t(data %>% filter(outliers==0, sigma==0) %>% .$params),1,mean)
+
+  data$radon_bias <- apply(data$params,1,function(x){euclidean_distance(x,unperturbed_radon_point)})
+
+
+  summary_data <- data %>%
+          group_by(outliers,sigma) %>%
+          reframe(
+                  mean_y = mean(radon_bias),
+                  ci_low = pmax(mean(radon_bias) - qt(0.975, df=n()-1) * sd(radon_bias) / sqrt(n()), min(radon_bias)),
+                  ci_high = pmin(mean(radon_bias) + qt(0.975, df=n()-1) * sd(radon_bias) / sqrt(n()), max(radon_bias))
+          )
+
+
+  (ggplot(summary_data %>% filter(sigma %in% c(0,1e-10,1e-5,0.001,0.1,0.5,1,2)), aes(x = outliers, y = mean_y)) +
+          geom_line(aes(color = as.factor(sigma))) +
+          geom_ribbon(aes(ymin = ci_low, ymax = ci_high, fill=as.factor(sigma)), alpha = 0.2) +
+          geom_vline(xintercept = 52, linetype="dashed") +
+          # geom_point(data = data, aes(x = x, y = y), alpha = 0.1) + # optional: to show original data points
+          labs(title = "Linear SVM Radon machine SUSY Dataset height=3",
+               subtitle = file,
+               x = "Number of outliers",
+               y = "Bias of radon point") +
+          theme_minimal())%>% plot()
+
+
+  (ggplot(data %>% filter(outliers == 0),
+         aes(x = as.factor(sigma), y= radon_bias, fill=as.factor(sigma))) +
+          geom_boxplot() +
+          labs(subtitle = file)) %>% plot()
+
+
+
+}
 
 ```
 
-Now, click the **Run** button on the chunk toolbar to [execute](https://www.jetbrains.com/help/pycharm/r-markdown.html#run-r-code) the chunk code. The result should be placed under the chunk.
-Click the **Knit and Open Document** to build and preview an output.
+
+
+```{r table}
+
+experiment_from_name <- function(filename){
+  pattern <- ".+\\/([A-Za-z0-9]+?)_([A-Za-z0-9]+?)_([A-Za-z0-9_]+)_2024"
+  matches <- regexec(pattern, filename)
+  captures <- regmatches(filename, matches)
+
+  if (length(captures[[1]]) > 0) {
+    components <- captures[[1]][-1]  # Remove the full match
+    dataset <- components[1]
+    estimator <- components[2]
+    experiment_name <- components[3]
+
+    return(list(dataset = dataset, estimator = estimator, experiment_name = experiment_name))
+  } else {
+    return(list(dataset = NA, estimator = NA, experiment_name = NA))
+  }
+}
+
+full_data <- data.frame()
+for (file in files){
+  data <- read.csv(file)
+  params <- data$params
+  numeric_params <- (strsplit(gsub("\\[ ?|\\]", "", params), "\\s+"))
+  final_estimators <- do.call(rbind, lapply(numeric_params, as.numeric))
+  data$params <- final_estimators
+  unperturbed_radon_point <- apply(t(data %>% filter(outliers==0, sigma==0) %>% .$params),1,mean)
+
+  data$radon_bias <- apply(data$params,1,function(x){euclidean_distance(x,unperturbed_radon_point)})
+  data$params <- NULL
+  data$estimators <- list(experiment_from_name(file))
+  data <- data %>% unnest_wider(estimators)
+
+  full_data <- bind_rows(data,full_data)
+}
+full_data
+
+```
+
+
+```{r}
+
+
+auc_normal_data <- full_data %>%
+        filter(experiment_name == "big_flip", sigma ==0, outliers == 0) %>%
+        group_by(dataset,estimator,height) %>%
+        reframe(auc = mean(auc)) %>% mutate(auc_zero = auc, auc= NULL)
+
+auc_1000_data <- full_data %>%
+        filter(experiment_name == "big_flip",outliers == 1000) %>%
+        group_by(dataset,estimator,height,sigma) %>%
+        reframe(auc = mean(auc)) %>% mutate(auc_1000 = auc, auc= NULL)
+
+
+
+
+
+
+
+
+
+table_data <- full_data %>%
+        filter(experiment_name == "big_flip") %>%
+        group_by(dataset,estimator,sigma,height,outliers) %>%
+        reframe(auc = mean(auc)) %>%
+        filter(auc > 0.5) %>%
+        group_by(dataset,estimator,sigma,height) %>%
+        filter(outliers == max(outliers)) %>%
+        group_by(dataset,estimator,height) %>%
+        filter((sigma == 0) | ((outliers == max(outliers)))) %>%
+        slice_head(n=2) %>%
+        mutate(noise = ifelse(sigma > 0,"sigma","0")) %>%
+        left_join(auc_1000_data) %>%
+        pivot_wider(names_from =noise, values_from = c(outliers,auc,sigma,auc_1000)) %>%
+        left_join(auc_normal_data) %>%
+        ungroup() %>%
+        transmute(
+                  dataset=dataset,
+                  d = ifelse(dataset == "SUSY", 19,ifelse(dataset == "sea50", 3,8)),
+                  eps = 2^height,
+                  height = height,
+                  num_estimators = (d+2)^height,
+                  model = estimator,
+                  auc_zero = auc_zero,
+                  no.5 = outliers_0,
+                  no.5.sigma = outliers_sigma,
+                  auc_1000 = auc_1000_0,
+                  auc_1000.sigma = auc_1000_sigma
+        )
+#(sigma == 0) |
+
+library(kableExtra)
+
+table_data
+
+library(kableExtra)
+library(dplyr)
+rows<- row.names(data_df)
+
+table_data %>%
+        mutate_all(function(x) format(x, digits = 2)) %>%
+        kbl(align = "r", , booktabs = TRUE, row.names = TRUE, format="latex")
+
+
+```
