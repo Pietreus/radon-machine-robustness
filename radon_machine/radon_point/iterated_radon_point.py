@@ -20,7 +20,7 @@ def radon_aggregate(pts, r):
     condition_numbers = []
     for i in range(0, len(pts), r):
         rad, cond_number = radon_point_unique(pts[i:(i + r)])
-        radons.append(rad[0])  # its just a unique radon point
+        radons.append(rad[0])  # it's just a unique radon point
         condition_numbers.append(cond_number)
     return np.array(radons), condition_numbers
 

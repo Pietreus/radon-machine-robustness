@@ -7,7 +7,6 @@ import numpy as np
 from joblib import Parallel, delayed
 from sklearn.datasets import make_classification
 from sklearn.linear_model._base import LinearClassifierMixin
-from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.svm import LinearSVC
 
 from radon_machine.radon_point.iterated_radon_point import iterated_radon_point
@@ -17,10 +16,10 @@ def initializer():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-class RadonMachineSVM(LinearClassifierMixin):
-    """Radon Machine for linear C-Support Vector Classification.
+class RadonMachineLinearBase(LinearClassifierMixin):
+    """Radon Machine for using some linear SKLearn models as base learners.
 
-    Upon fitting, internally splits the data and fits multiple linear SVC instances to each split.
+    Upon fitting, internally splits the data and fits multiple linear model instances to each split.
     These are then aggregated using iterated radon point computation.
     """
 
@@ -98,7 +97,7 @@ class RadonMachineSVM(LinearClassifierMixin):
         :return: self after fit
         """
         self._n, self._radon_number = np.shape(X)
-        # TODO assumption that parameters are d+1 does not have to be true, but we hope
+        # TODO assumption that parameters are d+1 does not have to be true, but works for linear models
         self._radon_number += 1 + 2
 
         np.random.seed(self.random_state)
@@ -114,14 +113,12 @@ class RadonMachineSVM(LinearClassifierMixin):
 
         # train base estimators
         # stratified split to ensure each svm learns a reasonable function
-        skf = KFold(folds, shuffle=True, random_state=self.random_state)
         vector = np.arange(len(X))
         np.random.shuffle(vector)
         fold_sizes = np.full(folds, len(X) // folds)
         fold_sizes[:len(X) % folds] += 1
         split_indices = np.cumsum(fold_sizes)[:-1]
         idx = np.split(vector, split_indices)
-        # skf = StratifiedKFold(folds, shuffle=True, random_state=self.random_state)
         with Parallel(self.n_jobs) as parallel:
             x = parallel(delayed(self._train_single_base_estimator)(
                 data) for data in itertools.product([(X[split], y[split]) for split in idx]))
@@ -148,7 +145,7 @@ class RadonMachineSVM(LinearClassifierMixin):
 
 if __name__ == "__main__":
     X, y = make_classification(n_features=4, random_state=0)
-    classifier = RadonMachineSVM()
+    classifier = RadonMachineLinearBase()
     classifier.fit(X, y)
     classifier.predict(X)
     pass

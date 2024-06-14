@@ -60,7 +60,6 @@ def radon_point_unique(pts):
     null_plus = null.clip(min=0)
     null_minus = null.clip(max=0)
     assert len(null_plus.T) == 1
-    # print(null_plus)
     r = system.dot(null_plus) / null_plus.sum()  # get radon point like described by radon
     r_minus = system.dot(null_minus) / null_minus.sum()
     if np.linalg.norm(r - r_minus) > 1e-10:
@@ -115,19 +114,3 @@ if __name__ == '__main__':
     print(
         f"mean of radon   points: {faston_points.mean(axis=0)}\nmean of radon^2 points: {faston_points2.mean(axis=0)}")
     orig_mean = pts.mean(axis=0)
-    # lim = 10
-    # for i in range(lim):
-    #     pts = radon_point3(pts) + np.random.randn(n, d) * 0
-    #     print(f"mean:{pts.mean(axis=0)}\n var:{pts.var(axis=0)}\n"
-    #           f"overall var {pts.var()}, overall distance from mean {np.linalg.norm(pts.mean(axis=0))}\n\n")
-    # # # reference
-    #
-    # hull = hull_to_points(radon_hull(pts))
-    # print(hull)
-    # is_in_check = (hull.round(4) == faston_points.round(4)[:, None]).all(axis=2).any(axis=1)
-    #
-    # print(is_in_check)
-    # print(ConvexHull(faston_points).points)
-    # print(is_in_check)
-    # print(ConvexHull(hull).points)
-    # exit()
