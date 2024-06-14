@@ -1,4 +1,4 @@
-set.seed(11905150)
+set.seed(42)
 
 
 #================= Helper Functions =================
@@ -7,7 +7,6 @@ set.seed(11905150)
 #' method simulating the breakdown behaviour of the singular radon point.
 #' Assumes correct number of points for radon computation have been given.
 radon_point_broken_down <- function(num_outliers) {
-
     return(sum(num_outliers)>=2)
 }
 
@@ -99,31 +98,31 @@ sapply(0:r,function(x)dhyper(x,5,r^5,r))
 # can see inaccuracies but yes
 
 
-# does the outlier expectation produce results similar to repeated simulation
-
-radon_machine_outlier_expectation(5, 3, 20)
-
-h <- 4
-d <- 3
-runs <- 200
-x <- c()
-y <- c()
-for(o in 0:(d^h)){
-    x[o+1] <- sum(replicate(runs,radon_machine(h, c(rep(1,o),rep(0,d^h-o)), radon_number = d)))/runs
-    y[o+1] <- radon_machine_outlier_expectation(d, h, o)
-    if(o>10)
-       if(x[o-10]>d-0.1){
-            break
-       }
-}
-plot(x,y)
-abline(0,1)
-# plot(x-y)
-
-
-o <- 5
-res <- sample(c(rep(1,o),rep(0,d^h-o)))
-splitx <- split(res,ceiling(seq_along(res)/(d)))
-        # print(splitx)
-res <- sapply(splitx, radon_point_broken_down)
-res
+# does the outlier expectation produce results similar to repeated simulation?
+# simulations
+# radon_machine_outlier_expectation(21, 3, 20)
+#
+# h <- 3
+# d <- 19
+# runs <- 20
+# x <- c()
+# y <- c()
+# for(o in 0:(d^h)){
+#     x[o+1] <- sum(replicate(runs,radon_machine(h, c(rep(1,o),rep(0,d^h-o)), radon_number = d)))/runs
+#     y[o+1] <- radon_machine_outlier_expectation(d, h, o)
+#     if(o>10)
+#        if(x[o-10]>d-0.1){
+#             break
+#        }
+# }
+# plot(x,y)
+# abline(0,1)
+# # plot(x-y)
+#
+#
+# o <- 5
+# res <- sample(c(rep(1,o),rep(0,d^h-o)))
+# splitx <- split(res,ceiling(seq_along(res)/(d)))
+#         # print(splitx)
+# res <- sapply(splitx, radon_point_broken_down)
+# res

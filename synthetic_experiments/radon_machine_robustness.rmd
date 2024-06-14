@@ -11,7 +11,8 @@ source("radon_robustness_simulation.R")
 
 #' upper bounds the probability of the radon machine breaking down with markov bounds
 radon_machine_breakdown_probability <- function(radon_number, height, num_outliers){
-  sapply(num_outliers, function(x)min(radon_machine_outlier_expectation(radon_number, height, x)/2, 1))
+  sapply(num_outliers,
+         function(x)min(radon_machine_outlier_expectation(radon_number, height, x), 2)/2)
 }
 
 #' returns the maximum amount of tolerated outliers such that the breakdown
