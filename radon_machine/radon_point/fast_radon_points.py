@@ -104,7 +104,7 @@ if __name__ == '__main__':
     n = d + 3  # amount of hypotheses
     k = 0  # outlier hypotheses
     h = 1  # height
-    np.random.seed(119051501)
+    np.random.seed(42)
     np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
     print()
     pts = np.vstack((1000 * np.random.randn(n - k, d), 0.01 * np.random.randn(k, d) + 50))

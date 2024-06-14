@@ -24,7 +24,7 @@ class RadonMachineLinearBase(LinearClassifierMixin):
     """
 
     def __init__(self, Base_estimator=LinearSVC, min_samples: int = 100, maximum_height: int = 10,
-                 n_jobs=2, sigma=1e-8, random_state: int = 11905150, **kwargs):
+                 n_jobs=2, sigma=1e-8, random_state: int = 42, **kwargs):
         """
         :param min_samples:
         :param maximum_height:
